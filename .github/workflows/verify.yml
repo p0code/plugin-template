@@ -1,0 +1,40 @@
+name: Verify
+
+# Mounts this template into a fresh p0code@main checkout and runs scripts/verify.sh:
+# install, plugin typecheck + tests, then the server and web typechecks that import it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, to catch p0code API changes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node and pnpm versions come from p0code's own package.json.
+      - name: Read p0code toolchain versions
+        id: versions
+        run: |
+          pkg=$(curl -fsSL https://raw.githubusercontent.com/p0code/p0code/main/package.json)
+          echo "node=$(echo "$pkg" | jq -r '.engines.node')" >> "$GITHUB_OUTPUT"
+          echo "pnpm=$(echo "$pkg" | jq -r '.packageManager' | sed 's/^pnpm@//')" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.versions.outputs.node }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ steps.versions.outputs.pnpm }}
+
+      - name: Verify against p0code@main
+        run: scripts/verify.sh
