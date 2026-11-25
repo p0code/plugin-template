@@ -127,13 +127,13 @@ November 2026.
 | `auth:issue-device-credentials` | Pair devices that stay signed in to this server until the plugin is disabled. | Yes: `deviceAccess` fails without it; the host revokes those sessions when the plugin turns off. |
 | `orchestration:read-activity` | See which agents are working or waiting, with thread and project titles. | Yes: `agentActivity` is empty or fails without it. |
 | `usage:read` | Read token and cost totals per day, provider and model (never prompts, paths or titles). | Yes: `usage.dailyTotals` fails without it. |
-| `data:backup` | Read a full copy of chats, attachments and settings, and propose restoring a backup. | **Not on p0code `main` yet** (branch `data-backup-host-api`); the manifest schema rejects it today. |
+| `data:backup` | Read a full copy of chats, attachments and settings, and propose restoring a backup. | **Not on p0code `main` yet** (branch `data-backup-host-api`); the shop schema accepts it, so a plugin can be listed ahead of the host API, but the app's manifest schema rejects it today. |
 | `network:outbound` | Connect to outside services and send data from the server. | No: a declaration only. Plugins run in the server process and can reach the network anyway. |
 | `process:spawn` | Run helper programs on the server, with its files and credentials. | No: a declaration only. It is a real shell-level process with your user's rights. |
 
-The plugin shop's schema currently accepts only the first six capabilities on main
-(`network:outbound`, `process:spawn`, `http:routes`, `auth:issue-device-credentials`,
-`orchestration:read-activity`, `agent:instructions`); check it before declaring `usage:read`.
+The plugin shop's schema accepts the app's full capability set, including `usage:read` and
+`data:backup`, and rejects unknown names. `data:backup` still needs the host API on p0code `main`
+before a plugin using it can start.
 
 ## Security
 
