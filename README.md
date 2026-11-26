@@ -80,11 +80,25 @@ pnpm exec vp run --filter @t3tools/web typecheck  # if you added the panel
 afterwards; CI ([`.github/workflows/verify.yml`](.github/workflows/verify.yml)) runs the same script
 on every push, PR and weekly.
 
-## Workflow B: list it in the plugin shop
+## Workflow B: ship it in the plugin shop
 
 The Shop tab reads the catalog at [p0code/plugins-shop](https://github.com/p0code/plugins-shop).
-Your plugin stays in your repo; the catalog only pins it to a reviewed commit. Open a PR there that
-adds `plugins/<id>.json`, where `<id>` is your manifest's `id`:
+Your plugin stays in your repo; the catalog pins a built bundle by SHA-256.
+
+### Build the bundle
+
+The installer expects a `.tgz` or `.zip` whose root holds exactly `manifest.json` and `plugin.mjs`:
+
+- `manifest.json` is your plugin's manifest, including `apiVersion` (currently `1`, exported as
+  `PLUGIN_API_VERSION` by `@t3tools/plugin-api`). Without it the host assumes the API it ships, so
+  an old p0code may try to install a release it cannot run.
+- `plugin.mjs` must `export default` the plugin object (`{ manifest, start }`), not only a named
+  export. The installed-bundle loader reads `default` and otherwise fails with
+  "The default export must be a plugin." That is why [`src/index.ts`](src/index.ts) ends with
+  `export default examplePlugin;` — keep that line when you rename the plugin.
+- The default export's `manifest` must deep-equal `manifest.json`; the loader checks both.
+
+Then add or update the entry:
 
 ```json
 {
@@ -93,24 +107,34 @@ adds `plugins/<id>.json`, where `<id>` is your manifest's `id`:
   "name": "Example",
   "description": "One or two sentences shown in the Shop.",
   "author": { "name": "you", "url": "https://github.com/you" },
-  "repository": "https://github.com/you/your-plugin",
-  "ref": "0123456789abcdef0123456789abcdef01234567",
-  "version": "0.1.0",
-  "capabilities": ["http:routes", "agent:instructions"],
-  "externalServices": [],
+  "repoUrl": "https://github.com/you/your-plugin",
   "license": "MIT",
-  "official": false
+  "categories": ["community"],
+  "latestVersion": "0.1.0",
+  "versions": [
+    {
+      "version": "0.1.0",
+      "bundleUrl": "https://github.com/you/your-plugin/releases/download/v0.1.0/example-0.1.0.tgz",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "apiVersion": 1,
+      "capabilities": ["http:routes", "agent:instructions"],
+      "sizeBytes": 12345,
+      "publishedAt": "2026-11-27T00:00:00.000Z"
+    }
+  ],
+  "source": "community",
+  "verified": false
 }
 ```
 
-- `ref` is a full commit SHA (preferred) or a tag; branches are refused. Updates are a PR that
-  bumps `ref` and `version`.
-- `id`, `version`, `capabilities` and `externalServices` must match your manifest at `ref`; the
-  shop's build reads them from the file your `package.json` `exports["."]` points to.
-- `official` is `true` only for repos owned by the `p0code` or `jsserve-org` orgs; the build
-  enforces it.
-- Optional: `path` (if `package.json` isn't at the repo root), `homepage`, `icon`, `screenshots`
-  (all `https://`).
+- `versions` is append-only; `latestVersion` must be the newest one.
+- `bundleUrl` is an HTTPS `.tgz` or `.zip` (a release asset or a file in the shop's `bundles/`).
+  `sha256` covers those bytes and `sizeBytes` must match.
+- `id`, `version`, `capabilities` and `apiVersion` must match the manifest inside the bundle; the
+  shop's build downloads it and refuses a mismatch.
+- `source` is `official` for `p0code`/`jsserve-org` repos and `community` otherwise; `verified` is
+  `true` only for `p0code` repos. The build enforces both badges.
+- Optional: `homepage`, `iconUrl`, `screenshotUrls` (all `https://`).
 
 The shop's README and `schema/plugin.schema.json` are the source of truth for these fields.
 

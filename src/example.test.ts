@@ -20,6 +20,7 @@ import {
   NoteOutput,
 } from "./actions.ts";
 import { examplePlugin, startExample } from "./index.ts";
+import defaultPlugin from "./index.ts";
 
 const decodeManifest = Schema.decodeExit(PluginManifest);
 const decodeNoteOutput = Schema.decodeUnknownEffect(NoteOutput);
@@ -45,6 +46,12 @@ function fakeContext() {
     },
     deviceAccess: { issueCredential: () => refused, revokeAll: refused },
     agentActivity: { changes: Stream.empty, read: () => refused, activeThreadIds: refused },
+    dataBackup: {
+      snapshot: refused,
+      stageRestore: () => refused,
+      pendingRestore: refused,
+      cancelRestore: refused,
+    },
     usage: { dailyTotals: () => refused },
   });
   return { context, stored, statuses };
@@ -63,6 +70,10 @@ const layerPlatform = Layer.mergeAll(
 
 describe("manifest", () => {
   const manifest = examplePlugin.manifest;
+
+  it("is the bundle's default export, so the installed-bundle loader can import it", () => {
+    assert.strictEqual(defaultPlugin, examplePlugin);
+  });
 
   it("decodes as a PluginManifest", () => {
     assert.isTrue(Exit.isSuccess(decodeManifest(manifest)));

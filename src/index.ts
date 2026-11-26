@@ -72,3 +72,7 @@ export const examplePlugin = definePlugin({
   actions: exampleActions,
   start: startExample,
 });
+
+// The installed-bundle loader imports a shop bundle's `plugin.mjs` and reads `default`, so a
+// plugin that is not exported as the default cannot be installed from the shop.
+export default examplePlugin;

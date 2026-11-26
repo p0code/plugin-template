@@ -36,10 +36,24 @@ node -e '
   }
 '
 REGISTRY=apps/server/src/plugins/registry.ts
-sed -i.bak '1i\
-import { examplePlugin } from "@p0code/plugin-template";
+node -e '
+  const fs = require("node:fs");
+  const file = process.argv[1];
+  let text = fs.readFileSync(file, "utf8");
+  if (!text.includes("@p0code/plugin-template")) {
+    text = `import { examplePlugin } from "@p0code/plugin-template";\n${text}`;
+  }
+  const list = /^(export )?const bundledPlugins = \[([\s\S]*?)\];/m;
+  if (!list.test(text)) {
+    console.error(`Could not find bundledPlugins in ${file}`);
+    process.exit(1);
+  }
+  text = text.replace(list, (_match, exported, inside) => {
+    const items = inside.trim().replace(/,$/, "");
+    return `${exported ?? ""}const bundledPlugins = [${items}, examplePlugin];`;
+  });
+  fs.writeFileSync(file, text);
 ' "$REGISTRY"
-sed -i.bak 's/^export const bundledPlugins = \[\(.*\)\];/export const bundledPlugins = [\1, examplePlugin];/' "$REGISTRY"
 grep -q 'examplePlugin\];' "$REGISTRY" || { echo "Could not add examplePlugin to $REGISTRY" >&2; exit 1; }
 
 SETTINGS=apps/web/src/components/settings/PluginsSettings.tsx
